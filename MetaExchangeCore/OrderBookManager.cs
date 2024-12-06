@@ -10,6 +10,7 @@ namespace MetaExchangeCore
         private readonly ConcurrentDictionary<long, MetaOrder> _orders = new();
 
         private long _nextOrderId = 0L;
+        private long _nextTradeId = 0L;
         public OrderBookManager()
         {
             _orderBook = new OrderBook();
@@ -26,18 +27,8 @@ namespace MetaExchangeCore
                 //Instead of throwing exception, we would set the status of ExchangeOrder to 'Failed' or something like that and push that to stream
                 throw new Exception($"Exchange Order with id {exchangeOrder.Id} from exchange {exchangeOrder.ExchangeId} is not valid");
             }
-            MetaOrder order = new MetaOrder
-            {
-                Id = Interlocked.Increment(ref _nextOrderId),
-                ExchangeOrderId = exchangeOrder.Id,
-                ExchangeId = exchangeOrder.ExchangeId,
-                Amount = exchangeOrder.Amount,
-                Kind = exchangeOrder.Kind,
-                Price = exchangeOrder.Price,
-                RemainingAmount = exchangeOrder.RemainingAmount,
-                Time = DateTime.UtcNow,
-                Type = exchangeOrder.Type
-            };
+            MetaOrder order = MetaOrder.FromExchangeOrder(exchangeOrder);
+            order.Id = Interlocked.Increment(ref _nextOrderId);
 
             //TODO: Lock here
 
@@ -50,28 +41,102 @@ namespace MetaExchangeCore
             return order;
         }
 
-        public IEnumerable<OrderTrade> HandleUserOrder(AddUserOrder userOrder)
+        public AddUserOrderResponse HandleUserOrder(AddUserOrder userOrder)
         {
             if (!IsOrderValid(userOrder))
             {
                 throw new Exception($"User Order for amount {userOrder.Amount} and type {userOrder.OrderType} is not valid");
             }
 
-            //Check if there even is a market, if there is no market, return some sort of status - probably need to modify what is returned here.
-            //E.g. return UserOrderResponse that will have list of ORderTrades and also executedAmount, remaining Amt, avgPrice, etc.
-            //Do we need to validate if it can be filled before looping? Or can it be done inside loop?
-
-            //TODO: Locking should be introduced here when we handle the order after validation
-
-
-            //While loop, getting best bids/asks to get to the desired qty
-            //Look at OrderBookNew.GetBestSellOrders
-            throw new NotImplementedException();
+            if (userOrder.OrderType == OrderType.Sell)
+                return HandleSellUserOrder(userOrder);
+            return HandleBuyUserOrder(userOrder);
         }
 
-        private OrderTrade BuildTrade(AddUserOrder userOrder, MetaOrder bookOrder)
+        private AddUserOrderResponse HandleSellUserOrder(AddUserOrder userOrder)
         {
-            return null;
+            AddUserOrderResponse response = new AddUserOrderResponse(userOrder);
+            response.Id = Interlocked.Increment(ref _nextOrderId);
+
+            //TODO: Locking should be introduced here when we handle the order after validation
+            if (_orderBook.GetBestBuyOrder() == null)
+            {
+                //There is no buy market, we can't do anything
+                response.Status = UserOrderStatus.Cancelled;
+                response.StatusChangeReason = StatusChangeReason.NoMarket;
+                return response;
+            }
+
+            while (response.ExecutedAmount < response.OriginalAmount && _orderBook.GetBestBuyOrder() != null)
+            {
+
+            }
+
+            return response;
+        }
+
+        private AddUserOrderResponse HandleBuyUserOrder(AddUserOrder userOrder)
+        {
+            AddUserOrderResponse response = new AddUserOrderResponse(userOrder);
+            response.Id = Interlocked.Increment(ref _nextOrderId);
+
+            //TODO: Locking should be introduced here when we handle the order after validation
+            if (_orderBook.GetBestSellOrder() == null)
+            {
+                //There is no sell market, we can't do anything
+                response.Status = UserOrderStatus.Cancelled;
+                response.StatusChangeReason = StatusChangeReason.NoMarket;
+                return response;
+            }
+
+            while (response.RemainingAmount > decimal.Zero && _orderBook.GetBestSellOrder() != null)
+            {
+                MetaOrder bookOrder = _orderBook.GetBestSellOrder();
+                OrderTrade trade = BuildTrade(response, bookOrder);
+                if (trade != null)
+                {
+                    response.Trades.Add(trade);
+                }
+
+                if (bookOrder.RemainingAmount <= decimal.Zero)
+                {
+                    if (!_orderBook.RemoveOrder(bookOrder))
+                    {
+                        throw new Exception("Something went very wrong");
+                    }
+                }
+
+                //TODO: Send update of book order to exchange 
+            }
+
+
+            //Check if fully executed, if it is, appropriate status set
+            if (response.RemainingAmount == decimal.Zero)
+            {
+                response.Status = UserOrderStatus.FullyExecuted;
+            }
+            else if (response.ExecutedAmount > decimal.Zero)
+            {
+                response.Status = UserOrderStatus.PartiallyExecuted;
+            }
+            return response;
+        }
+
+        private OrderTrade BuildTrade(AddUserOrderResponse userOrder, MetaOrder bookOrder)
+        {
+            OrderTrade trade = new OrderTrade
+            {
+                OrderId = userOrder.Id,
+                TradeId = Interlocked.Increment(ref _nextTradeId),
+                Amount = Math.Min(userOrder.RemainingAmount, bookOrder.RemainingAmount),
+                Price = bookOrder.Price,
+                OrderType = userOrder.OrderType,
+            };
+
+            userOrder.ExecutedAmount += trade.Amount;
+            bookOrder.RemainingAmount -= trade.Amount;
+
+            return trade;
         }
 
         private bool IsOrderValid(AddUserOrder order)

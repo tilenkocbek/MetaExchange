@@ -3,8 +3,6 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.12.35410.144
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MetaExchangeConsole", "MetaExchangeConsole.csproj", "{8B8BBFBB-9487-400A-A105-A6C6DC3470B9}"
-EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{4CF2BC23-0DD7-487D-8541-EB34F25A1F6C}"
 	ProjectSection(SolutionItems) = preProject
 		.gitattributes = .gitattributes
@@ -14,7 +12,9 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MetaExchangeCore", "MetaExchangeCore\MetaExchangeCore.csproj", "{00283C44-F5C3-4AF3-9E50-42CC135D73BE}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tests", "MetaExchangeCore\Tests\Tests.csproj", "{ABAF0388-D445-4A18-BD83-BFC3DB1AA822}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MetaExchangeConsole", "MetaExchangeConsole\MetaExchangeConsole.csproj", "{4F68CE66-0944-4527-8131-39E74179080D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MetaExchangeTests", "MetaExchangeTests\MetaExchangeTests.csproj", "{C754AB49-768D-456E-911E-7C80B266DC2D}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -22,18 +22,18 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{8B8BBFBB-9487-400A-A105-A6C6DC3470B9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{8B8BBFBB-9487-400A-A105-A6C6DC3470B9}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{8B8BBFBB-9487-400A-A105-A6C6DC3470B9}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{8B8BBFBB-9487-400A-A105-A6C6DC3470B9}.Release|Any CPU.Build.0 = Release|Any CPU
 		{00283C44-F5C3-4AF3-9E50-42CC135D73BE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{00283C44-F5C3-4AF3-9E50-42CC135D73BE}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{00283C44-F5C3-4AF3-9E50-42CC135D73BE}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{00283C44-F5C3-4AF3-9E50-42CC135D73BE}.Release|Any CPU.Build.0 = Release|Any CPU
-		{ABAF0388-D445-4A18-BD83-BFC3DB1AA822}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{ABAF0388-D445-4A18-BD83-BFC3DB1AA822}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{ABAF0388-D445-4A18-BD83-BFC3DB1AA822}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{ABAF0388-D445-4A18-BD83-BFC3DB1AA822}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4F68CE66-0944-4527-8131-39E74179080D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4F68CE66-0944-4527-8131-39E74179080D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4F68CE66-0944-4527-8131-39E74179080D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4F68CE66-0944-4527-8131-39E74179080D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C754AB49-768D-456E-911E-7C80B266DC2D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C754AB49-768D-456E-911E-7C80B266DC2D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C754AB49-768D-456E-911E-7C80B266DC2D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C754AB49-768D-456E-911E-7C80B266DC2D}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

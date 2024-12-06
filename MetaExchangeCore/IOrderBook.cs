@@ -8,13 +8,11 @@ namespace MetaExchangeCore
     /// </summary>
     public interface IOrderBook
     {
-        decimal BestBid();
-        decimal BestAsk();
+        MetaOrder? GetBestBuyOrder();
+        MetaOrder? GetBestSellOrder();
         bool RemoveOrder(MetaOrder order);
         bool AddOrder(MetaOrder order);
         IEnumerable<MetaOrder> GetAllSellOrders();
         IEnumerable<MetaOrder> GetAllBuyOrders();
-        IEnumerable<MetaOrder> GetBestSellOrders();
-        IEnumerable<MetaOrder> GetBestBuyOrders();
     }
 }

@@ -3,11 +3,12 @@
 namespace Tests
 {
     [TestClass]
-    public class TestOrderBook
+    public class OrderBookTests
     {
         [TestMethod]
-        public void TestMethod1()
+        public void TestAddBuyOrder()
         {
+            MetaOrder
         }
     }
 }
