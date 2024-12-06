@@ -6,7 +6,7 @@ namespace MetaExchangeTests
 {
     public class OrderBookTests
     {
-        private readonly IOrderBook _orderBook;
+        private readonly OrderBook _orderBook;
 
         public OrderBookTests() {
             _orderBook = new OrderBook();
@@ -152,6 +152,116 @@ namespace MetaExchangeTests
             allBuyOrders[0].Id.Should().Be(sellOrder2.Id);
             allBuyOrders[1].Id.Should().Be(sellOrder3.Id);
             allBuyOrders[2].Id.Should().Be(sellOrder1.Id);
+        }
+
+        [Fact]
+        public void TestOrderBook_RemoveBuyOrder()
+        {
+            MetaOrder buyOrder1 = new MetaOrder
+            {
+                Id = 1L,
+                Amount = 1,
+                RemainingAmount = 1,
+                Price = 65_000.0m,
+                Type = OrderType.Buy
+            };
+            _orderBook.AddOrder(buyOrder1).Should().BeTrue();
+
+            MetaOrder buyOrder2 = new MetaOrder
+            {
+                Id = buyOrder1.Id + 1,
+                Amount = 2,
+                RemainingAmount = 2,
+                Price = 65_100.0m,
+                Type = OrderType.Buy
+            };
+            _orderBook.AddOrder(buyOrder2).Should().BeTrue();
+
+            MetaOrder buyOrder3 = new MetaOrder
+            {
+                Id = buyOrder2.Id + 1,
+                Amount = 3,
+                RemainingAmount = 3,
+                Price = buyOrder2.Price,
+                Type = OrderType.Buy
+            };
+
+            _orderBook.AddOrder(buyOrder3).Should().BeTrue();
+            MetaOrder? bestBuyOrder = _orderBook.GetBestBuyOrder();
+            bestBuyOrder.Should().NotBeNull();
+
+            bestBuyOrder!.Id.Should().Be(buyOrder2.Id);
+
+            _orderBook.RemoveOrder(bestBuyOrder).Should().BeTrue();
+            bestBuyOrder = _orderBook.GetBestBuyOrder();
+            bestBuyOrder.Should().NotBeNull();
+
+            bestBuyOrder!.Id.Should().Be(buyOrder3.Id);
+
+            _orderBook.RemoveOrder(bestBuyOrder).Should().BeTrue();
+            bestBuyOrder = _orderBook.GetBestBuyOrder();
+            bestBuyOrder.Should().NotBeNull();
+
+            bestBuyOrder!.Id.Should().Be(buyOrder1.Id);
+
+            _orderBook.RemoveOrder(bestBuyOrder).Should().BeTrue();
+            bestBuyOrder = _orderBook.GetBestBuyOrder();
+            bestBuyOrder.Should().BeNull();
+        }
+
+        [Fact]
+        public void TestOrderBook_RemoveSellOrder()
+        {
+            MetaOrder sellOrder1 = new MetaOrder
+            {
+                Id = 1L,
+                Amount = 1,
+                RemainingAmount = 1,
+                Price = 65_000.0m,
+                Type = OrderType.Sell
+            };
+            _orderBook.AddOrder(sellOrder1).Should().BeTrue();
+
+            MetaOrder sellOrder2 = new MetaOrder
+            {
+                Id = sellOrder1.Id + 1,
+                Amount = 2,
+                RemainingAmount = 2,
+                Price = 64_900.0m,
+                Type = OrderType.Sell
+            };
+            _orderBook.AddOrder(sellOrder2).Should().BeTrue();
+
+            MetaOrder sellOrder3 = new MetaOrder
+            {
+                Id = sellOrder2.Id + 1,
+                Amount = 3,
+                RemainingAmount = 3,
+                Price = sellOrder2.Price,
+                Type = OrderType.Sell
+            };
+
+            _orderBook.AddOrder(sellOrder3).Should().BeTrue();
+            MetaOrder? bestSellOrder = _orderBook.GetBestSellOrder();
+            bestSellOrder.Should().NotBeNull();
+
+            bestSellOrder!.Id.Should().Be(sellOrder2.Id);
+
+            _orderBook.RemoveOrder(bestSellOrder).Should().BeTrue();
+            bestSellOrder = _orderBook.GetBestSellOrder();
+            bestSellOrder.Should().NotBeNull();
+
+            bestSellOrder!.Id.Should().Be(sellOrder3.Id);
+
+            _orderBook.RemoveOrder(bestSellOrder).Should().BeTrue();
+            bestSellOrder = _orderBook.GetBestSellOrder();
+            bestSellOrder.Should().NotBeNull();
+
+            bestSellOrder!.Id.Should().Be(sellOrder1.Id);
+
+            _orderBook.RemoveOrder(bestSellOrder).Should().BeTrue();
+            bestSellOrder = _orderBook.GetBestSellOrder();
+            bestSellOrder.Should().BeNull();
         }
     }
 }

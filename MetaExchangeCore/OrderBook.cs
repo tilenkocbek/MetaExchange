@@ -106,10 +106,7 @@ namespace MetaExchangeCore
             if (order == _bestSellOrder)
             {
                 LinkedListNode<MetaOrder> node = orders.First!;
-                if (node.Next != null)
-                {
-                    _bestSellOrder = node.Next.Value;
-                }
+                _bestSellOrder = node.Next?.Value;
             }
             if (!orders.Remove(order))
                 return false;
@@ -120,7 +117,7 @@ namespace MetaExchangeCore
                 _sells.Remove(order.Price);
                 if (_sells.Count > 0)
                 {
-                    _bestSellOrder = _sells[0].First();
+                    _bestSellOrder = _sells.First().Value.First();
                 }
             }
             return true;
@@ -137,10 +134,7 @@ namespace MetaExchangeCore
             if (order == _bestBuyOrder)
             {
                 LinkedListNode<MetaOrder> node = orders.First!;
-                if (node.Next != null)
-                {
-                    _bestBuyOrder = node.Next.Value;
-                }
+                _bestBuyOrder = node.Next?.Value;
             }
             if (!orders.Remove(order))
                 return false;
@@ -151,7 +145,7 @@ namespace MetaExchangeCore
                 _buys.Remove(order.Price);
                 if (_buys.Count > 0)
                 {
-                    _bestBuyOrder = _buys[0].First();
+                    _bestBuyOrder = _buys.First().Value.First();
                 }
             }
             return true;
