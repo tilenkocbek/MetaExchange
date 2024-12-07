@@ -13,6 +13,87 @@ namespace MetaExchangeTests
         }
 
         [Fact]
+        public void TestOrderBook_AddOrder_InvalidTypeShouldFail()
+        {
+            MetaOrder invalidOrder = new MetaOrder
+            {
+                Id = 1L,
+                Amount = 1,
+                RemainingAmount = 1,
+                Price = 65_000.0m,
+                Type = OrderType.Unknown
+            };
+
+            _orderBook.AddOrder(invalidOrder).Should().BeFalse();
+
+            _orderBook.GetAllBuyOrders().Should().BeEmpty();
+            _orderBook.GetAllSellOrders().Should().BeEmpty();
+            _orderBook.GetBestBuyOrder().Should().BeNull();
+            _orderBook.GetBestSellOrder().Should().BeNull();
+        }
+
+        [Fact]
+        public void TestOrderBook_RemoveOrder_InvalidTypeShouldFail()
+        {
+            MetaOrder buyOrder = new MetaOrder
+            {
+                Id = 1L,
+                Amount = 1,
+                RemainingAmount = 1,
+                Price = 65_000.0m,
+                Type = OrderType.Buy
+            };
+
+            _orderBook.AddOrder(buyOrder).Should().BeTrue();
+
+            buyOrder.Type = OrderType.Unknown;
+            _orderBook.RemoveOrder(buyOrder).Should().BeFalse();
+            _orderBook.GetAllBuyOrders().Should().HaveCount(1);
+            _orderBook.GetAllSellOrders().Should().BeEmpty();
+            _orderBook.GetBestBuyOrder().Should().NotBeNull();
+        }
+
+        [Fact]
+        public void TestOrderBook_AddOrder_OrderWithIdAlreadyExists()
+        {
+            MetaOrder buyOrder = new MetaOrder
+            {
+                Id = 1L,
+                Amount = 1,
+                RemainingAmount = 1,
+                Price = 65_000.0m,
+                Type = OrderType.Buy
+            };
+
+            _orderBook.AddOrder(buyOrder).Should().BeTrue();
+
+            MetaOrder order2 = new MetaOrder
+            {
+                Id = buyOrder.Id,
+                Amount = 1,
+                RemainingAmount = 1,
+                Price = 64_000.0m,
+            };
+            _orderBook.AddOrder(order2).Should().BeFalse();
+            _orderBook.GetAllBuyOrders().Should().HaveCount(1);
+            _orderBook.GetAllSellOrders().Should().BeEmpty();
+            _orderBook.GetBestBuyOrder().Should().NotBeNull();
+
+            MetaOrder sellOrder = new MetaOrder
+            {
+                Id = buyOrder.Id,
+                Amount = 1,
+                RemainingAmount = 1,
+                Price = 64_000.0m,
+            };
+
+            _orderBook.AddOrder(sellOrder).Should().BeFalse();
+            _orderBook.GetAllBuyOrders().Should().HaveCount(1);
+            _orderBook.GetAllSellOrders().Should().BeEmpty();
+            _orderBook.GetBestBuyOrder().Should().NotBeNull();
+        }
+
+        [Fact]
         public void TestOrderBook_AddBuyOrder()
         {
             MetaOrder buyOrder1 = new MetaOrder
@@ -207,6 +288,9 @@ namespace MetaExchangeTests
             _orderBook.RemoveOrder(bestBuyOrder).Should().BeTrue();
             bestBuyOrder = _orderBook.GetBestBuyOrder();
             bestBuyOrder.Should().BeNull();
+
+            _orderBook.GetAllBuyOrders().Should().BeEmpty();
+            _orderBook.GetAllSellOrders().Should().BeEmpty();
         }
 
         [Fact]
@@ -262,6 +346,43 @@ namespace MetaExchangeTests
             _orderBook.RemoveOrder(bestSellOrder).Should().BeTrue();
             bestSellOrder = _orderBook.GetBestSellOrder();
             bestSellOrder.Should().BeNull();
+
+            _orderBook.GetAllBuyOrders().Should().BeEmpty();
+            _orderBook.GetAllSellOrders().Should().BeEmpty();
+        }
+
+        [Fact]
+        public void TestOrderBook_RemoveOrder_UnknownOrder_ShouldReturnFalse()
+        {
+            MetaOrder sellOrder1 = new MetaOrder
+            {
+                Id = 1L,
+                Amount = 1,
+                RemainingAmount = 1,
+                Price = 65_000.0m,
+                Type = OrderType.Sell
+            };
+            _orderBook.AddOrder(sellOrder1).Should().BeTrue();
+
+            MetaOrder? bestSellOrder = _orderBook.GetBestSellOrder();
+            bestSellOrder.Should().NotBeNull();
+
+            bestSellOrder!.Price = sellOrder1.Price + 0.5m;
+            _orderBook.RemoveOrder(bestSellOrder).Should().BeFalse();
+
+            bestSellOrder!.Price = 65_000.0m;
+            bestSellOrder.Id = sellOrder1.Id + 1;
+            _orderBook.RemoveOrder(new MetaOrder
+            {
+                Id = 1L,
+                Amount = 1,
+                RemainingAmount = 1,
+                Price = 65_000.0m,
+                Type = OrderType.Sell
+            }).Should().BeFalse();
+
+            bestSellOrder!.Id = 1L;
+            _orderBook.RemoveOrder(bestSellOrder).Should().BeTrue();
         }
     }
 }

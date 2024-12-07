@@ -91,7 +91,7 @@ namespace MetaExchangeCore
 
             while (response.RemainingAmount > decimal.Zero && _orderBook.GetBestSellOrder() != null)
             {
-                MetaOrder bookOrder = _orderBook.GetBestSellOrder();
+                MetaOrder bookOrder = _orderBook.GetBestSellOrder()!;
                 OrderTrade trade = BuildTrade(response, bookOrder);
                 if (trade != null)
                 {
@@ -136,17 +136,19 @@ namespace MetaExchangeCore
             userOrder.ExecutedAmount += trade.Amount;
             bookOrder.RemainingAmount -= trade.Amount;
 
+            //TODO: Output the trade or somehow update that bookOrder has changed and notify exchange where that order came from
+
             return trade;
         }
 
-        private bool IsOrderValid(AddUserOrder order)
+        private static bool IsOrderValid(AddUserOrder order)
         {
             if (order.OrderType == OrderType.Unknown || order.Amount <= decimal.Zero)
                 return false;
             return true;
         }
 
-        private bool IsOrderValid(ExchangeOrder order)
+        private static bool IsOrderValid(ExchangeOrder order)
         {
             if (string.IsNullOrWhiteSpace(order.ExchangeId) ||
                 order.Type == OrderType.Unknown ||
