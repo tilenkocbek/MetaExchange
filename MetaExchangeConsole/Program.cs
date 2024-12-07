@@ -7,7 +7,7 @@ namespace MetaExchange
 {
     internal class Program
     {
-        static void Main(string[] args)
+        static async Task Main(string[] args)
         {
             var path = Path.Combine(AppContext.BaseDirectory, "OrderBookData", "order_books_data_simple.txt");
             if (!File.Exists(path))
@@ -50,7 +50,7 @@ namespace MetaExchange
                     {
                         var exchangeOrder = OrderBookOrder.ToExchangeOrder(bidOrder.Order);
                         exchangeOrder.ExchangeId = exchangeId;
-                        orderBookManager.AddExchangeOrder(exchangeOrder);
+                        await orderBookManager.AddExchangeOrder(exchangeOrder);
                         buyCnt++;
                         buyAmt += exchangeOrder.Amount;
                     }
@@ -59,7 +59,7 @@ namespace MetaExchange
                     {
                         var exchangeOrder = OrderBookOrder.ToExchangeOrder(askOrder.Order);
                         exchangeOrder.ExchangeId = exchangeId;
-                        orderBookManager.AddExchangeOrder(exchangeOrder);
+                        await orderBookManager.AddExchangeOrder(exchangeOrder);
                         sellCnt++;
                         sellAmount += exchangeOrder.Amount;
                     }
@@ -118,7 +118,7 @@ namespace MetaExchange
                 }
 
                 AddUserOrder userOrder = new AddUserOrder { Amount = amount, OrderType = orderType };
-                AddUserOrderResponse response = orderBookManager.HandleUserOrder(userOrder);
+                AddUserOrderResponse response = await orderBookManager.HandleUserOrder(userOrder);
                 Console.WriteLine(JsonSerializer.Serialize(response, new JsonSerializerOptions { WriteIndented = true,
                     Converters =
                             {

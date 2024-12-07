@@ -4,7 +4,7 @@ namespace MetaExchangeCore
 {
     public interface IOrderBookManager
     {
-        MetaOrder AddExchangeOrder(ExchangeOrder exchangeOrder);
-        AddUserOrderResponse HandleUserOrder(AddUserOrder userOrder);
+        Task<MetaOrder> AddExchangeOrder(ExchangeOrder exchangeOrder);
+        Task<AddUserOrderResponse> HandleUserOrder(AddUserOrder userOrder);
     }
 }

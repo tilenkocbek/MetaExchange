@@ -8,6 +8,7 @@ namespace MetaExchangeCore
     //Have subscriptions dict e.g. <string, List<IOrderChangeSub>>, where string is exchangeId?
     public class OrderBookManager : IOrderBookManager
     {
+        private static SemaphoreSlim _semaphore;
         private readonly IOrderBook _orderBook;
         //Do we even need this
         private readonly ConcurrentDictionary<long, MetaOrder> _orders = new();
@@ -17,12 +18,13 @@ namespace MetaExchangeCore
         public OrderBookManager(IOrderBook orderBook)
         {
             _orderBook = orderBook;
+            _semaphore = new SemaphoreSlim(1, 1);
         }
 
         /// <summary>
         /// This handles orders that come from other exchanges - it maps the order into our 'internal' order object and adds it to order book.
         /// </summary>
-        public MetaOrder AddExchangeOrder(ExchangeOrder exchangeOrder)
+        public async Task<MetaOrder> AddExchangeOrder(ExchangeOrder exchangeOrder)
         {
             if (!IsOrderValid(exchangeOrder))
             {
@@ -33,19 +35,24 @@ namespace MetaExchangeCore
             MetaOrder order = MetaOrder.FromExchangeOrder(exchangeOrder);
             order.Id = Interlocked.Increment(ref _nextOrderId);
 
-            //TODO: Lock here, Interlocked, Monitor, what to use?
-            //TODO: Change to async?
-
-            if (!_orderBook.AddOrder(order))
+            try
             {
-                throw new Exception($"Could not add order {exchangeOrder.Id} from exchange {exchangeOrder.ExchangeId} to order book.");
-            }
+                await _semaphore.WaitAsync();
+                if (!_orderBook.AddOrder(order))
+                {
+                    throw new Exception($"Could not add order {exchangeOrder.Id} from exchange {exchangeOrder.ExchangeId} to order book.");
+                }
 
-            _orders.TryAdd(order.Id, order);
-            return order;
+                _orders.TryAdd(order.Id, order);
+                return order;
+            }
+            finally
+            {
+                _semaphore.Release();
+            }
         }
 
-        public AddUserOrderResponse HandleUserOrder(AddUserOrder userOrder)
+        public async Task<AddUserOrderResponse> HandleUserOrder(AddUserOrder userOrder)
         {
             if (!IsOrderValid(userOrder))
             {
@@ -53,10 +60,17 @@ namespace MetaExchangeCore
             }
 
             //Lock here instead of inside two methods below
-
-            if (userOrder.OrderType == OrderType.Sell)
-                return HandleSellUserOrder(userOrder);
-            return HandleBuyUserOrder(userOrder);
+            try
+            {
+                await _semaphore.WaitAsync();
+                if (userOrder.OrderType == OrderType.Sell)
+                    return HandleSellUserOrder(userOrder);
+                return HandleBuyUserOrder(userOrder);
+            }
+            finally
+            {
+                _semaphore.Release();
+            }
         }
 
         private AddUserOrderResponse HandleSellUserOrder(AddUserOrder userOrder)
