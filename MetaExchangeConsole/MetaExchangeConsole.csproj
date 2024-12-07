@@ -13,4 +13,17 @@
     <None Remove="README.md" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\MetaExchangeCore\MetaExchangeCore.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="OrderBookData\order_books_data_simple.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="OrderBookData\order_books_data.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>

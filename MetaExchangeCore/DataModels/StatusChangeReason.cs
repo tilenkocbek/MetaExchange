@@ -3,6 +3,7 @@
     public enum StatusChangeReason
     {
         Unknown,
-        NoMarket
+        NoMarket,
+        Finished
     }
 }

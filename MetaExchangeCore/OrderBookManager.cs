@@ -3,6 +3,9 @@ using System.Collections.Concurrent;
 
 namespace MetaExchangeCore
 {
+    // TODO: Think about how hedger class/system would subscribe to order changes. Is it enough to just have it injected here and call it,
+    // e.g. Hedger.OrderUpdated, or do we need some kind of events/delegates/actions here?
+    //Have subscriptions dict e.g. <string, List<IOrderChangeSub>>, where string is exchangeId?
     public class OrderBookManager : IOrderBookManager
     {
         private readonly IOrderBook _orderBook;
@@ -30,7 +33,8 @@ namespace MetaExchangeCore
             MetaOrder order = MetaOrder.FromExchangeOrder(exchangeOrder);
             order.Id = Interlocked.Increment(ref _nextOrderId);
 
-            //TODO: Lock here
+            //TODO: Lock here, Interlocked, Monitor, what to use?
+            //TODO: Change to async?
 
             if (!_orderBook.AddOrder(order))
             {
@@ -47,6 +51,8 @@ namespace MetaExchangeCore
             {
                 throw new OrderNotValidException($"User Order for amount {userOrder.Amount} and type {userOrder.OrderType} is not valid");
             }
+
+            //Lock here instead of inside two methods below
 
             if (userOrder.OrderType == OrderType.Sell)
                 return HandleSellUserOrder(userOrder);
@@ -76,7 +82,7 @@ namespace MetaExchangeCore
                 }
 
                 if (bookOrder.RemainingAmount <= decimal.Zero)
-            {
+                {
                     if (!_orderBook.RemoveOrder(bookOrder))
                     {
                         throw new Exception("Something went very wrong");
@@ -141,6 +147,7 @@ namespace MetaExchangeCore
             {
                 response.Status = UserOrderStatus.PartiallyExecuted;
             }
+            response.StatusChangeReason = StatusChangeReason.Finished;
             return response;
         }
 
