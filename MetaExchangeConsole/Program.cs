@@ -17,7 +17,7 @@ namespace MetaExchange
             }
 
             OrderBookManager orderBookManager = new OrderBookManager(new OrderBook());
-
+            ExchangeManager exchangeManager = new ExchangeManager(orderBookManager);
             int sellCnt = 0;
             int buyCnt = 0;
             decimal sellAmount = 0;
@@ -36,6 +36,7 @@ namespace MetaExchange
                         return;
                     }
                     string exchangeId = $"Exchange-{exchanges}";
+                    exchangeManager.AddUpdateExchange(exchangeId);
                     OrderBookEntries? exchangeOrderBook = JsonSerializer.Deserialize<OrderBookEntries>(splitted[1], new JsonSerializerOptions
                     {
                         Converters = { new JsonStringEnumConverter() }

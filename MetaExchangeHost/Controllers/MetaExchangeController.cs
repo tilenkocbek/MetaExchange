@@ -9,15 +9,18 @@ namespace MetaExchangeHost.Controllers
     public class MetaExchangeController : ControllerBase
     {
         private readonly IOrderBookManager _orderBookManager;
-        public MetaExchangeController(IOrderBookManager orderBookManager)
+        private readonly IExchangeManager _exchangeManager;
+        public MetaExchangeController(IOrderBookManager orderBookManager, IExchangeManager exchangeManager)
         {
             _orderBookManager = orderBookManager;
+            _exchangeManager = exchangeManager;
         }
 
         [HttpPost]
         [Route("add-exchange-order")]
         public async Task<MetaOrder> AddNewExchangeOrder([FromBody]ExchangeOrder order)
         {
+            _exchangeManager.AddUpdateExchange(order.ExchangeId);
             return await _orderBookManager.AddExchangeOrder(order);
         }
 

@@ -6,5 +6,6 @@ namespace MetaExchangeCore
     {
         Task<MetaOrder> AddExchangeOrder(ExchangeOrder exchangeOrder);
         Task<AddUserOrderResponse> HandleUserOrder(AddUserOrder userOrder);
+        void SubscribeToOrderUpdates(OrderUpdated hdl);
     }
 }

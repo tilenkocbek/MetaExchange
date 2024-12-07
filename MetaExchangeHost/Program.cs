@@ -19,6 +19,7 @@ namespace MetaExchangeHost
             builder.Services.AddSwaggerGen();
             builder.Services.AddSingleton<IOrderBook, OrderBook>();
             builder.Services.AddSingleton<IOrderBookManager, OrderBookManager>();
+            builder.Services.AddSingleton<IExchangeManager, ExchangeManager>();
 
             var app = builder.Build();
 

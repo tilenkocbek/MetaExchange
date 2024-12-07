@@ -12,9 +12,12 @@ namespace MetaExchangeCore
         private readonly IOrderBook _orderBook;
         //Do we even need this
         private readonly ConcurrentDictionary<long, MetaOrder> _orders = new();
-
         private long _nextOrderId = 0L;
         private long _nextTradeId = 0L;
+
+        //List of subscribers per exchangeId
+        private readonly List<OrderUpdated> orderUpdateSubs = [];
+
         public OrderBookManager(IOrderBook orderBook)
         {
             _orderBook = orderBook;
@@ -103,10 +106,9 @@ namespace MetaExchangeCore
                     }
                 }
 
-                //TODO: Send update of book order to exchange 
+                UpdateOrder(bookOrder);
             }
 
-            //Check if fully executed, if it is, appropriate status set
             if (response.RemainingAmount == decimal.Zero)
             {
                 response.Status = UserOrderStatus.FullyExecuted;
@@ -148,11 +150,9 @@ namespace MetaExchangeCore
                     }
                 }
 
-                //TODO: Send update of book order to exchange 
+                UpdateOrder(bookOrder);
             }
 
-
-            //Check if fully executed, if it is, appropriate status set
             if (response.RemainingAmount == decimal.Zero)
             {
                 response.Status = UserOrderStatus.FullyExecuted;
@@ -181,7 +181,6 @@ namespace MetaExchangeCore
             userOrder.ExecutedAmount += trade.Amount;
             bookOrder.RemainingAmount -= trade.Amount;
 
-            //TODO: Output the trade or somehow update that bookOrder has changed and notify exchange where that order came from
 
             return trade;
         }
@@ -203,5 +202,11 @@ namespace MetaExchangeCore
                 return false;
             return true;
         }
+
+        public void SubscribeToOrderUpdates(OrderUpdated hdl) =>
+            orderUpdateSubs.Add(hdl);
+
+        private void UpdateOrder(MetaOrder order) =>
+            orderUpdateSubs?.ForEach(x => x.Invoke(order));
     }
 }
