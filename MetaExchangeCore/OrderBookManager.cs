@@ -11,9 +11,9 @@ namespace MetaExchangeCore
 
         private long _nextOrderId = 0L;
         private long _nextTradeId = 0L;
-        public OrderBookManager()
+        public OrderBookManager(IOrderBook orderBook)
         {
-            _orderBook = new OrderBook();
+            _orderBook = orderBook;
         }
 
         /// <summary>
@@ -25,7 +25,7 @@ namespace MetaExchangeCore
             {
                 //Order from exchange would get validated in ExchangeClient as soon as we receive that order from some other exchange.
                 //Instead of throwing exception, we would set the status of ExchangeOrder to 'Failed' or something like that and push that to stream
-                throw new Exception($"Exchange Order with id {exchangeOrder.Id} from exchange {exchangeOrder.ExchangeId} is not valid");
+                throw new OrderNotValidException($"Exchange Order with id {exchangeOrder.Id} from exchange {exchangeOrder.ExchangeId} is not valid");
             }
             MetaOrder order = MetaOrder.FromExchangeOrder(exchangeOrder);
             order.Id = Interlocked.Increment(ref _nextOrderId);
@@ -45,7 +45,7 @@ namespace MetaExchangeCore
         {
             if (!IsOrderValid(userOrder))
             {
-                throw new Exception($"User Order for amount {userOrder.Amount} and type {userOrder.OrderType} is not valid");
+                throw new OrderNotValidException($"User Order for amount {userOrder.Amount} and type {userOrder.OrderType} is not valid");
             }
 
             if (userOrder.OrderType == OrderType.Sell)
@@ -58,7 +58,6 @@ namespace MetaExchangeCore
             AddUserOrderResponse response = new AddUserOrderResponse(userOrder);
             response.Id = Interlocked.Increment(ref _nextOrderId);
 
-            //TODO: Locking should be introduced here when we handle the order after validation
             if (_orderBook.GetBestBuyOrder() == null)
             {
                 //There is no buy market, we can't do anything
@@ -67,11 +66,35 @@ namespace MetaExchangeCore
                 return response;
             }
 
-            while (response.ExecutedAmount < response.OriginalAmount && _orderBook.GetBestBuyOrder() != null)
+            while (response.RemainingAmount > decimal.Zero && _orderBook.GetBestBuyOrder() != null)
             {
+                MetaOrder bookOrder = _orderBook.GetBestBuyOrder()!;
+                OrderTrade trade = BuildTrade(response, bookOrder);
+                if (trade != null)
+                {
+                    response.Trades.Add(trade);
+                }
 
+                if (bookOrder.RemainingAmount <= decimal.Zero)
+            {
+                    if (!_orderBook.RemoveOrder(bookOrder))
+                    {
+                        throw new Exception("Something went very wrong");
+                    }
+                }
+
+                //TODO: Send update of book order to exchange 
             }
 
+            //Check if fully executed, if it is, appropriate status set
+            if (response.RemainingAmount == decimal.Zero)
+            {
+                response.Status = UserOrderStatus.FullyExecuted;
+            }
+            else if (response.ExecutedAmount > decimal.Zero)
+            {
+                response.Status = UserOrderStatus.PartiallyExecuted;
+            }
             return response;
         }
 
@@ -80,7 +103,6 @@ namespace MetaExchangeCore
             AddUserOrderResponse response = new AddUserOrderResponse(userOrder);
             response.Id = Interlocked.Increment(ref _nextOrderId);
 
-            //TODO: Locking should be introduced here when we handle the order after validation
             if (_orderBook.GetBestSellOrder() == null)
             {
                 //There is no sell market, we can't do anything
@@ -127,6 +149,8 @@ namespace MetaExchangeCore
             OrderTrade trade = new OrderTrade
             {
                 OrderId = userOrder.Id,
+                ExchangeOrderId = bookOrder.ExchangeOrderId,
+                ExchangeId = bookOrder.ExchangeId,
                 TradeId = Interlocked.Increment(ref _nextTradeId),
                 Amount = Math.Min(userOrder.RemainingAmount, bookOrder.RemainingAmount),
                 Price = bookOrder.Price,
