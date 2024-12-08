@@ -1,4 +1,4 @@
-using MetaExchangeCore;
+using MetaExchangeHost.Extensions;
 using System.Text.Json.Serialization;
 
 namespace MetaExchangeHost
@@ -10,16 +10,13 @@ namespace MetaExchangeHost
             var builder = WebApplication.CreateBuilder(args);
 
             // Add services to the container.
-
             builder.Services.AddControllers().AddJsonOptions(option =>
             {
                 option.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
             });
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
-            builder.Services.AddSingleton<IOrderBook, OrderBook>();
-            builder.Services.AddSingleton<IOrderBookManager, OrderBookManager>();
-            builder.Services.AddSingleton<IExchangeManager, ExchangeManager>();
+            builder.Services.AddMetaExchangeServices();
 
             var app = builder.Build();
 
@@ -29,10 +26,9 @@ namespace MetaExchangeHost
 
             app.UseAuthorization();
 
-
             app.MapControllers();
             app.UseSwagger();
-            app.UseSwaggerUI(options => // UseSwaggerUI is called only in Development.
+            app.UseSwaggerUI(options =>
             {
                 options.SwaggerEndpoint("/swagger/v1/swagger.json", "v1");
                 options.RoutePrefix = string.Empty;

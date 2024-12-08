@@ -1,4 +1,5 @@
 ﻿using MetaExchangeCore;
+using MetaExchangeCore.Common;
 using MetaExchangeCore.DataModels;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -9,68 +10,18 @@ namespace MetaExchange
     {
         static async Task Main(string[] args)
         {
-            var path = Path.Combine(AppContext.BaseDirectory, "OrderBookData", "order_books_data_simple.txt");
-            if (!File.Exists(path))
+            if (!OrderBookDataLoader.OrderBookDataFileExists())
             {
-                Console.WriteLine($"File with order book data not found at path {path}");
+                Console.WriteLine($"File with order book data not found at path {OrderBookDataLoader.OrderBookFilePath}");
                 return;
-            }
+            } 
 
             OrderBookManager orderBookManager = new OrderBookManager(new OrderBook());
             ExchangeManager exchangeManager = new ExchangeManager(orderBookManager);
-            int sellCnt = 0;
-            int buyCnt = 0;
-            decimal sellAmount = 0;
-            decimal buyAmt = 0;
-            int exchanges = 0;
-            int lineCnt = 1;
-            //Read file and populate order book with data
-            foreach (var line in File.ReadLines(path))
-            {
-                if (!string.IsNullOrWhiteSpace(line))
-                {
-                    string[] splitted = line.Split("\t");
-                    if (splitted.Length != 2)
-                    {
-                        Console.WriteLine($"Could not parse string at line {lineCnt}. {line}");
-                        return;
-                    }
-                    string exchangeId = $"Exchange-{exchanges}";
-                    exchangeManager.AddUpdateExchange(exchangeId);
-                    OrderBookEntries? exchangeOrderBook = JsonSerializer.Deserialize<OrderBookEntries>(splitted[1], new JsonSerializerOptions
-                    {
-                        Converters = { new JsonStringEnumConverter() }
-                    });
-                    if (exchangeOrderBook == null)
-                    {
-                        Console.WriteLine($"Could not deserialize order book at line {lineCnt}");
-                        return;
-                    }
 
-                    foreach (var bidOrder in exchangeOrderBook.Bids)
-                    {
-                        var exchangeOrder = OrderBookOrder.ToExchangeOrder(bidOrder.Order);
-                        exchangeOrder.ExchangeId = exchangeId;
-                        await orderBookManager.AddExchangeOrder(exchangeOrder);
-                        buyCnt++;
-                        buyAmt += exchangeOrder.Amount;
-                    }
-
-                    foreach (var askOrder in exchangeOrderBook.Asks)
-                    {
-                        var exchangeOrder = OrderBookOrder.ToExchangeOrder(askOrder.Order);
-                        exchangeOrder.ExchangeId = exchangeId;
-                        await orderBookManager.AddExchangeOrder(exchangeOrder);
-                        sellCnt++;
-                        sellAmount += exchangeOrder.Amount;
-                    }
-
-                    exchanges++;
-                }
-            }
-
-            Console.WriteLine($"Added {buyCnt} Buy orders and {sellCnt} Sell orders from {exchanges} exchanges");
-            Console.WriteLine($"Sum amount of all buy orders is {buyAmt} BTC, while sum amount of all sell orders is {sellAmount}");
+            var stats = await OrderBookDataLoader.ImportOrderBookDataFile(orderBookManager, exchangeManager);
+            Console.WriteLine($"Added {stats.BuyOrders} Buy orders and {stats.SellOrders} Sell orders from {stats.Exchanges} exchanges");
+            Console.WriteLine($"Sum amount of all buy orders is {stats.BuyAmount} BTC, while sum amount of all sell orders is {stats.SellAmount}");
 
             Console.WriteLine("\b \b ------------------------------------ SETUP FINISHED -----------------");
             //Wait for user input
@@ -84,7 +35,7 @@ namespace MetaExchange
 
             while (!cancelPressed)
             {
-                Console.WriteLine($"\n \n ");
+                Console.WriteLine($"\n");
                 OrderType orderType = OrderType.Unknown;
                 while (orderType == OrderType.Unknown)
                 {
@@ -120,48 +71,15 @@ namespace MetaExchange
 
                 AddUserOrder userOrder = new AddUserOrder { Amount = amount, OrderType = orderType };
                 AddUserOrderResponse response = await orderBookManager.HandleUserOrder(userOrder);
-                Console.WriteLine(JsonSerializer.Serialize(response, new JsonSerializerOptions { WriteIndented = true,
+                Console.WriteLine(JsonSerializer.Serialize(response, new JsonSerializerOptions
+                {
+                    WriteIndented = true,
                     Converters =
                             {
                                 new JsonStringEnumConverter()
                             }
                 }));
             };
-        }
-
-        private class OrderBookEntries
-        {
-            public List<OrderBookEntry> Bids { get; set; } = [];
-            public List<OrderBookEntry> Asks { get; set; } = [];
-        }
-
-        private class OrderBookEntry
-        {
-            public OrderBookOrder Order { get; set; }
-        }
-
-        private class OrderBookOrder
-        {
-            public long? Id { get; set; }
-            public DateTime Time { get; set; }
-            public OrderType Type { get; set; }
-            public OrderKind Kind { get; set; }
-            public decimal Amount { get; set; }
-            public decimal Price { get; set; }
-
-            public static ExchangeOrder ToExchangeOrder(OrderBookOrder orderBookOrder)
-            {
-                return new ExchangeOrder
-                {
-                    Id = orderBookOrder.Id ?? new Random().NextInt64() + DateTime.UtcNow.Ticks,
-                    Amount = orderBookOrder.Amount,
-                    RemainingAmount = orderBookOrder.Amount,
-                    Price = orderBookOrder.Price,
-                    Kind = orderBookOrder.Kind,
-                    Time = orderBookOrder.Time,
-                    Type = orderBookOrder.Type
-                };
-            }
         }
     }
 }
