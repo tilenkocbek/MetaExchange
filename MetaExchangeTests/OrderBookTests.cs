@@ -384,5 +384,113 @@ namespace MetaExchangeTests
             bestSellOrder!.Id = 1L;
             _orderBook.RemoveOrder(bestSellOrder).Should().BeTrue();
         }
+
+        [Fact]
+        public void TestOrderBook_RemoveSellOrderFromMiddleOfBook()
+        {
+            MetaOrder sellOrder1 = new MetaOrder
+            {
+                Id = 1L,
+                Amount = 1,
+                RemainingAmount = 1,
+                Price = 65_000.0m,
+                Type = OrderType.Sell
+            };
+            _orderBook.AddOrder(sellOrder1).Should().BeTrue();
+
+            MetaOrder sellOrder2 = new MetaOrder
+            {
+                Id = sellOrder1.Id + 1,
+                Amount = 2,
+                RemainingAmount = 2,
+                Price = 64_900.0m,
+                Type = OrderType.Sell
+            };
+            _orderBook.AddOrder(sellOrder2).Should().BeTrue();
+
+            MetaOrder sellOrder3 = new MetaOrder
+            {
+                Id = sellOrder2.Id + 1,
+                Amount = 3,
+                RemainingAmount = 3,
+                Price = sellOrder2.Price,
+                Type = OrderType.Sell
+            };
+
+            MetaOrder sellOrder4 = new MetaOrder
+            {
+                Id = sellOrder3.Id + 1,
+                Amount = 4,
+                RemainingAmount = 4,
+                Price = sellOrder3.Price,
+                Type = OrderType.Sell
+            };
+
+
+            _orderBook.AddOrder(sellOrder3).Should().BeTrue();
+            _orderBook.AddOrder(sellOrder4).Should().BeTrue();
+
+            _orderBook.GetAllSellOrders().Should().HaveCount(4);
+            
+            _orderBook.RemoveOrder(sellOrder3).Should().BeTrue();
+            _orderBook.GetAllSellOrders().Should().HaveCount(3);
+            _orderBook.GetAllSellOrders().Should().Contain(x => x.Id == sellOrder4.Id);
+            _orderBook.GetAllSellOrders().Should().Contain(x => x.Id == sellOrder1.Id);
+            _orderBook.GetAllSellOrders().Should().Contain(x => x.Id == sellOrder2.Id);
+        }
+
+        [Fact]
+        public void TestOrderBook_RemoveBuyOrderFromMiddleOfBook()
+        {
+            MetaOrder buyOrder1 = new MetaOrder
+            {
+                Id = 1L,
+                Amount = 1,
+                RemainingAmount = 1,
+                Price = 64_000,
+                Type = OrderType.Buy
+            };
+            _orderBook.AddOrder(buyOrder1).Should().BeTrue();
+
+            MetaOrder buyOrder2 = new MetaOrder
+            {
+                Id = buyOrder1.Id + 1,
+                Amount = 2,
+                RemainingAmount = 2,
+                Price = 64_900.0m,
+                Type = OrderType.Buy
+            };
+            _orderBook.AddOrder(buyOrder2).Should().BeTrue();
+
+            MetaOrder buyOrder3 = new MetaOrder
+            {
+                Id = buyOrder2.Id + 1,
+                Amount = 3,
+                RemainingAmount = 3,
+                Price = buyOrder2.Price,
+                Type = OrderType.Buy
+            };
+
+            MetaOrder buyOrder4 = new MetaOrder
+            {
+                Id = buyOrder3.Id + 1,
+                Amount = 4,
+                RemainingAmount = 4,
+                Price = buyOrder3.Price,
+                Type = OrderType.Buy
+            };
+
+
+            _orderBook.AddOrder(buyOrder3).Should().BeTrue();
+            _orderBook.AddOrder(buyOrder4).Should().BeTrue();
+
+            _orderBook.GetAllBuyOrders().Should().HaveCount(4);
+
+            _orderBook.RemoveOrder(buyOrder3).Should().BeTrue();
+            _orderBook.GetAllBuyOrders().Should().HaveCount(3);
+            _orderBook.GetAllBuyOrders().Should().Contain(x => x.Id == buyOrder4.Id);
+            _orderBook.GetAllBuyOrders().Should().Contain(x => x.Id == buyOrder1.Id);
+            _orderBook.GetAllBuyOrders().Should().Contain(x => x.Id == buyOrder2.Id);
+        }
     }
 }

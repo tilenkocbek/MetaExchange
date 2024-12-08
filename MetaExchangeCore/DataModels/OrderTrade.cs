@@ -1,6 +1,6 @@
 ﻿namespace MetaExchangeCore.DataModels
 {
-    public class OrderTrade
+    public record OrderTrade
     {
         public long OrderId { get; set; }
         public long ExchangeOrderId { get; set; }

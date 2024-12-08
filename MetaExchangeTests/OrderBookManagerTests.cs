@@ -17,7 +17,7 @@ namespace MetaExchangeTests
         }
 
         [Fact]
-        public void AddExchangeOrder_InvalidOrderShouldThrow()
+        public async Task AddExchangeOrder_InvalidOrderShouldThrow()
         {
             ExchangeOrder exchangeOrder = new ExchangeOrder()
             {
@@ -33,44 +33,44 @@ namespace MetaExchangeTests
 
             //invalid exchangeId
             exchangeOrder.ExchangeId = null;
-            Action act = () => _orderBookManager.AddExchangeOrder(exchangeOrder);
-            act.Should().Throw<OrderNotValidException>();
+            Func<Task> act = () => _orderBookManager.AddExchangeOrder(exchangeOrder);
+            await act.Should().ThrowAsync<OrderNotValidException>();
 
             exchangeOrder.ExchangeId = "";
             act = () => _orderBookManager.AddExchangeOrder(exchangeOrder);
-            act.Should().Throw<OrderNotValidException>();
+            await act.Should().ThrowAsync<OrderNotValidException>();
 
             exchangeOrder.ExchangeId = "  ";
             act = () => _orderBookManager.AddExchangeOrder(exchangeOrder);
-            act.Should().Throw<OrderNotValidException>();
+            await act.Should().ThrowAsync<OrderNotValidException>();
 
             //invalid order type
             exchangeOrder.ExchangeId = Guid.NewGuid().ToString();
             exchangeOrder.Type = OrderType.Unknown;
             act = () => _orderBookManager.AddExchangeOrder(exchangeOrder);
-            act.Should().Throw<OrderNotValidException>();
+            await act.Should().ThrowAsync<OrderNotValidException>();
 
             //invalid kind
             exchangeOrder.Type = OrderType.Buy;
             exchangeOrder.Kind = OrderKind.Unknown;
             act = () => _orderBookManager.AddExchangeOrder(exchangeOrder);
-            act.Should().Throw<OrderNotValidException>();
+            await act.Should().ThrowAsync<OrderNotValidException>();
 
             //invalid price
             exchangeOrder.Kind = OrderKind.Market;
             exchangeOrder.Price = decimal.Zero;
             act = () => _orderBookManager.AddExchangeOrder(exchangeOrder);
-            act.Should().Throw<OrderNotValidException>();
+            await act.Should().ThrowAsync<OrderNotValidException>();
 
             //invalid amount
             exchangeOrder.Price = 0.01m;
             exchangeOrder.Amount = decimal.Zero;
             act = () => _orderBookManager.AddExchangeOrder(exchangeOrder);
-            act.Should().Throw<OrderNotValidException>();
+            await act.Should().ThrowAsync<OrderNotValidException>();
         }
 
         [Fact]
-        public void AddExchangeOrder_BadOrderBook()
+        public async Task AddExchangeOrder_BadOrderBook()
         {
             ExchangeOrder exchangeOrder = new ExchangeOrder()
             {
@@ -86,8 +86,8 @@ namespace MetaExchangeTests
 
             _orderBook.AddOrder(Arg.Is<MetaOrder>(o => o.ExchangeOrderId == exchangeOrder.Id)).Returns(false);
 
-            Action act = () => _orderBookManager.AddExchangeOrder(exchangeOrder);
-            act.Should().Throw<Exception>();
+            Func<Task> act = () => _orderBookManager.AddExchangeOrder(exchangeOrder);
+            await act.Should().ThrowAsync<Exception>();
         }
 
         [Fact]
@@ -123,7 +123,7 @@ namespace MetaExchangeTests
         }
 
         [Fact]
-        public void AddUserOrder_InvalidOrderShouldThrow()
+        public async Task AddUserOrder_InvalidOrderShouldThrow()
         {
             AddUserOrder userOrder = new AddUserOrder()
             {
@@ -133,17 +133,17 @@ namespace MetaExchangeTests
 
             //invalid type
             userOrder.OrderType = OrderType.Unknown;
-            Action act = () => _orderBookManager.HandleUserOrder(userOrder);
-            act.Should().Throw<OrderNotValidException>();
+            Func<Task> act = () => _orderBookManager.HandleUserOrder(userOrder);
+            await act.Should().ThrowAsync<OrderNotValidException>();
 
             userOrder.OrderType = OrderType.Buy;
             userOrder.Amount = decimal.Zero;
             act = () => _orderBookManager.HandleUserOrder(userOrder);
-            act.Should().Throw<OrderNotValidException>();
+            await act.Should().ThrowAsync<OrderNotValidException>();
         }
 
         [Fact]
-        public void AddUserOrderBuy_NoSellMarket()
+        public async Task AddUserOrderBuy_NoSellMarket()
         {
             AddUserOrder userOrder = new AddUserOrder()
             {
@@ -153,7 +153,7 @@ namespace MetaExchangeTests
 
             _orderBook.GetBestSellOrder().Returns((MetaOrder?)null);
 
-            AddUserOrderResponse resp = _orderBookManager.HandleUserOrder(userOrder);
+            AddUserOrderResponse resp = await _orderBookManager.HandleUserOrder(userOrder);
             resp.Should().NotBeNull();
             resp.Id.Should().Be(1);
             resp.Status.Should().Be(UserOrderStatus.Cancelled);
@@ -161,7 +161,7 @@ namespace MetaExchangeTests
         }
 
         [Fact]
-        public void AddUserOrderSell_NoBuyMarket()
+        public async Task AddUserOrderSell_NoBuyMarket()
         {
             AddUserOrder userOrder = new AddUserOrder()
             {
@@ -171,7 +171,7 @@ namespace MetaExchangeTests
 
             _orderBook.GetBestBuyOrder().Returns((MetaOrder?)null);
 
-            AddUserOrderResponse resp = _orderBookManager.HandleUserOrder(userOrder);
+            AddUserOrderResponse resp = await _orderBookManager.HandleUserOrder(userOrder);
             resp.Should().NotBeNull();
             resp.Id.Should().Be(1);
             resp.Status.Should().Be(UserOrderStatus.Cancelled);
@@ -179,7 +179,7 @@ namespace MetaExchangeTests
         }
 
         [Fact]
-        public void AddUserOrderBuy_ExecutePartially()
+        public async Task AddUserOrderBuy_ExecutePartially()
         {
             AddUserOrder userOrder = new AddUserOrder()
             {
@@ -200,7 +200,14 @@ namespace MetaExchangeTests
             _orderBook.GetBestSellOrder().Returns(bestSellOrder, bestSellOrder, bestSellOrder, (MetaOrder?)null);
             _orderBook.RemoveOrder(Arg.Any<MetaOrder>()).Returns(true);
 
-            AddUserOrderResponse resp = _orderBookManager.HandleUserOrder(userOrder);
+            MetaOrder? orderUpdate = null;
+            int orderUpdateCalled = 0;
+            _orderBookManager.SubscribeToOrderUpdates((MetaOrder order) => {
+                orderUpdate = order;
+                orderUpdateCalled++;
+            });
+
+            AddUserOrderResponse resp = await _orderBookManager.HandleUserOrder(userOrder);
             resp.Should().NotBeNull();
             resp.Id.Should().Be(1);
             resp.Status.Should().Be(UserOrderStatus.PartiallyExecuted);
@@ -221,10 +228,22 @@ namespace MetaExchangeTests
             resp.Trades[0].OrderType.Should().Be(userOrder.OrderType);
 
             _orderBook.Received(1).RemoveOrder(Arg.Is<MetaOrder>(o => o.Id == bestSellOrder.Id));
+
+            while(orderUpdateCalled < 1) { }
+
+            orderUpdateCalled.Should().Be(1);
+            orderUpdate.Should().NotBeNull();
+            orderUpdate!.Id.Should().Be(bestSellOrder.Id);
+            orderUpdate.Amount.Should().Be(bestSellOrder.Amount);
+            orderUpdate.ExchangeId.Should().Be(bestSellOrder.ExchangeId);
+            orderUpdate.ExchangeOrderId.Should().Be(bestSellOrder.ExchangeOrderId);
+            orderUpdate.RemainingAmount.Should().Be(decimal.Zero);
+            orderUpdate.Price.Should().Be(bestSellOrder.Price);
         }
 
+
         [Fact]
-        public void AddUserOrderBuy_ExecuteFromMultipleOrders()
+        public async Task AddUserOrderBuy_ExecuteFromMultipleOrders()
         {
             AddUserOrder userOrder = new AddUserOrder()
             {
@@ -255,7 +274,14 @@ namespace MetaExchangeTests
             _orderBook.GetBestSellOrder().Returns(bestSellOrder, bestSellOrder, bestSellOrder, bestSellOrder2, bestSellOrder2, (MetaOrder?)null);
             _orderBook.RemoveOrder(Arg.Any<MetaOrder>()).Returns(true);
 
-            AddUserOrderResponse resp = _orderBookManager.HandleUserOrder(userOrder);
+            List<MetaOrder> orderUpdates = [];
+            int orderUpdateCalled = 0;
+            _orderBookManager.SubscribeToOrderUpdates((MetaOrder order) => {
+                orderUpdates.Add(order);
+                orderUpdateCalled++;
+            });
+
+            AddUserOrderResponse resp = await _orderBookManager.HandleUserOrder(userOrder);
             resp.Should().NotBeNull();
             resp.Id.Should().Be(1);
             resp.Status.Should().Be(UserOrderStatus.FullyExecuted);
@@ -283,10 +309,22 @@ namespace MetaExchangeTests
             _orderBook.Received(1).RemoveOrder(Arg.Is<MetaOrder>(o => o.Id == bestSellOrder.Id));
             _orderBook.Received(1).RemoveOrder(Arg.Is<MetaOrder>(o => o.Id == bestSellOrder2.Id));
 
+            while (orderUpdateCalled < 2) { }
+
+            orderUpdateCalled.Should().Be(2);
+            orderUpdates.Should().HaveCount(2);
+            orderUpdates.Should().Contain(x => x.Id == bestSellOrder.Id &&
+                x.Amount == bestSellOrder.Amount && x.ExchangeId == bestSellOrder.ExchangeId &&
+                x.ExchangeOrderId == bestSellOrder.ExchangeOrderId && x.RemainingAmount == decimal.Zero &&
+                x.Price == bestSellOrder.Price);
+            orderUpdates.Should().Contain(x => x.Id == bestSellOrder2.Id &&
+                x.Amount == bestSellOrder2.Amount && x.ExchangeId == bestSellOrder2.ExchangeId &&
+                x.ExchangeOrderId == bestSellOrder2.ExchangeOrderId && x.RemainingAmount == 1.5m &&
+                x.Price == bestSellOrder2.Price);
         }
 
         [Fact]
-        public void AddUserOrderSell_ExecutePartially()
+        public async Task AddUserOrderSell_ExecutePartially()
         {
             AddUserOrder userOrder = new AddUserOrder()
             {
@@ -307,7 +345,14 @@ namespace MetaExchangeTests
             _orderBook.GetBestBuyOrder().Returns(bestBuyOrder, bestBuyOrder, bestBuyOrder, (MetaOrder?)null);
             _orderBook.RemoveOrder(Arg.Any<MetaOrder>()).Returns(true);
 
-            AddUserOrderResponse resp = _orderBookManager.HandleUserOrder(userOrder);
+            MetaOrder? orderUpdate = null;
+            int orderUpdateCalled = 0;
+            _orderBookManager.SubscribeToOrderUpdates((MetaOrder order) => {
+                orderUpdate = order;
+                orderUpdateCalled++;
+            });
+
+            AddUserOrderResponse resp = await _orderBookManager.HandleUserOrder(userOrder);
             resp.Should().NotBeNull();
             resp.Id.Should().Be(1);
             resp.Status.Should().Be(UserOrderStatus.PartiallyExecuted);
@@ -328,10 +373,21 @@ namespace MetaExchangeTests
             resp.Trades[0].OrderType.Should().Be(userOrder.OrderType);
 
             _orderBook.Received(1).RemoveOrder(Arg.Is<MetaOrder>(o => o.Id == bestBuyOrder.Id));
+
+            while (orderUpdateCalled < 1) { }
+
+            orderUpdateCalled.Should().Be(1);
+            orderUpdate.Should().NotBeNull();
+            orderUpdate!.Id.Should().Be(bestBuyOrder.Id);
+            orderUpdate.Amount.Should().Be(bestBuyOrder.Amount);
+            orderUpdate.ExchangeId.Should().Be(bestBuyOrder.ExchangeId);
+            orderUpdate.ExchangeOrderId.Should().Be(bestBuyOrder.ExchangeOrderId);
+            orderUpdate.RemainingAmount.Should().Be(decimal.Zero);
+            orderUpdate.Price.Should().Be(bestBuyOrder.Price);
         }
 
         [Fact]
-        public void AddUserOrderSell_ExecuteFromMultipleOrders()
+        public async Task AddUserOrderSell_ExecuteFromMultipleOrders()
         {
             AddUserOrder userOrder = new AddUserOrder()
             {
@@ -362,7 +418,14 @@ namespace MetaExchangeTests
             _orderBook.GetBestBuyOrder().Returns(bestBuyOrder, bestBuyOrder, bestBuyOrder, bestBuyOrder2, bestBuyOrder2, (MetaOrder?)null);
             _orderBook.RemoveOrder(Arg.Any<MetaOrder>()).Returns(true);
 
-            AddUserOrderResponse resp = _orderBookManager.HandleUserOrder(userOrder);
+            List<MetaOrder> orderUpdates = [];
+            int orderUpdateCalled = 0;
+            _orderBookManager.SubscribeToOrderUpdates((MetaOrder order) => {
+                orderUpdates.Add(order);
+                orderUpdateCalled++;
+            });
+
+            AddUserOrderResponse resp = await _orderBookManager.HandleUserOrder(userOrder);
             resp.Should().NotBeNull();
             resp.Id.Should().Be(1);
             resp.Status.Should().Be(UserOrderStatus.FullyExecuted);
@@ -390,6 +453,19 @@ namespace MetaExchangeTests
             _orderBook.Received(1).RemoveOrder(Arg.Is<MetaOrder>(o => o.Id == bestBuyOrder.Id));
             _orderBook.Received(1).RemoveOrder(Arg.Is<MetaOrder>(o => o.Id == bestBuyOrder2.Id));
 
+
+            while (orderUpdateCalled < 2) { }
+
+            orderUpdateCalled.Should().Be(2);
+            orderUpdates.Should().HaveCount(2);
+            orderUpdates.Should().Contain(x => x.Id == bestBuyOrder.Id &&
+                x.Amount == bestBuyOrder.Amount && x.ExchangeId == bestBuyOrder.ExchangeId &&
+                x.ExchangeOrderId == bestBuyOrder.ExchangeOrderId && x.RemainingAmount == decimal.Zero &&
+                x.Price == bestBuyOrder.Price);
+            orderUpdates.Should().Contain(x => x.Id == bestBuyOrder2.Id &&
+                x.Amount == bestBuyOrder2.Amount && x.ExchangeId == bestBuyOrder2.ExchangeId &&
+                x.ExchangeOrderId == bestBuyOrder2.ExchangeOrderId && x.RemainingAmount == 1.5m &&
+                x.Price == bestBuyOrder2.Price);
         }
     }
 }
